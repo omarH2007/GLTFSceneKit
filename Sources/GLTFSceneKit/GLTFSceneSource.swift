@@ -65,8 +65,12 @@ public class GLTFSceneSource : SCNSceneSource {
         let scene = try loader.loadScene()
         #if SEEMS_TO_HAVE_SKINNER_VECTOR_TYPE_BUG
             let sceneData = NSKeyedArchiver.archivedData(withRootObject: scene)
-            let source = SCNSceneSource(data: sceneData, options: nil)!
-            let newScene = source.scene(options: nil)!
+        guard let  source = SCNSceneSource(data: sceneData, options: nil) else {
+            throw GLTFUnarchiveError.Unknown("loader is not initialized")
+        }
+        guard let newScene = source.scene(options: nil) else{
+                throw GLTFUnarchiveError.Unknown("loader is not initialized")
+            }
             return newScene
         #else
             return scene

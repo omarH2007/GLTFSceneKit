@@ -19,7 +19,7 @@ let bundle = Bundle.module_workaround
 
 public class GLTFUnarchiver {
     private var directoryPath: URL? = nil
-    private var json: GLTFGlTF! = nil
+    private var json: GLTFGlTF?
     private var bin: Data?
     
     internal var scene: SCNScene?
@@ -116,23 +116,24 @@ public class GLTFUnarchiver {
     }
     
     private func initArrays() {
-        if let scenes = self.json.scenes {
+        guard let json else{return}
+        if let scenes = json.scenes {
             self.scenes = [SCNScene?](repeating: nil, count: scenes.count)
         }
         
-        if let cameras = self.json.cameras {
+        if let cameras = json.cameras {
             self.cameras = [SCNCamera?](repeating: nil, count: cameras.count)
         }
         
-        if let nodes = self.json.nodes {
+        if let nodes = json.nodes {
             self.nodes = [SCNNode?](repeating: nil, count: nodes.count)
         }
         
-        if let skins = self.json.skins {
+        if let skins = json.skins {
             self.skins = [SCNSkinner?](repeating: nil, count: skins.count)
         }
         
-        if let animations = self.json.animations {
+        if let animations = json.animations {
             //if #available(OSX 10.13, *) {
             // self.animationChannels = [[SCNAnimation?]?](repeating: nil, count: animations.count)
             self.animationChannels = [[CAAnimation?]?](repeating: nil, count: animations.count)
@@ -142,32 +143,32 @@ public class GLTFUnarchiver {
             //}
         }
         
-        if let meshes = self.json.meshes {
+        if let meshes = json.meshes {
             self.meshes = [SCNNode?](repeating: nil, count: meshes.count)
         }
         
-        if let accessors = self.json.accessors {
+        if let accessors = json.accessors {
             self.accessors = [Any?](repeating: nil, count: accessors.count)
             self.durations = [CFTimeInterval?](repeating: nil, count: accessors.count)
         }
         
-        if let bufferViews = self.json.bufferViews {
+        if let bufferViews = json.bufferViews {
             self.bufferViews = [Data?](repeating: nil, count: bufferViews.count)
         }
         
-        if let buffers = self.json.buffers {
+        if let buffers = json.buffers {
             self.buffers = [Data?](repeating: nil, count: buffers.count)
         }
         
-        if let materials = self.json.materials {
+        if let materials = json.materials {
             self.materials = [SCNMaterial?](repeating: nil, count: materials.count)
         }
         
-        if let textures = self.json.textures {
+        if let textures = json.textures {
             self.textures = [SCNMaterialProperty?](repeating: nil, count: textures.count)
         }
         
-        if let images = self.json.images {
+        if let images = json.images {
             self.images = [Image?](repeating: nil, count: images.count)
         }
     }
@@ -207,7 +208,7 @@ public class GLTFUnarchiver {
             return camera
         }
         
-        guard let cameras = self.json.cameras else {
+        guard let cameras = self.json?.cameras else {
             throw GLTFUnarchiveError.DataInconsistent("loadCamera: cameras is not defined")
         }
         
@@ -261,7 +262,7 @@ public class GLTFUnarchiver {
             return buffer
         }
         
-        guard let buffers = self.json.buffers else {
+        guard let buffers = self.json?.buffers else {
             throw GLTFUnarchiveError.DataInconsistent("loadBufferView: buffers is not defined")
         }
         
@@ -302,7 +303,7 @@ public class GLTFUnarchiver {
             return bufferView
         }
         
-        guard let bufferViews = self.json.bufferViews else {
+        guard let bufferViews = self.json?.bufferViews else {
             throw GLTFUnarchiveError.DataInconsistent("loadBufferView: bufferViews is not defined")
         }
         let glBufferView = bufferViews[index]
@@ -326,9 +327,14 @@ public class GLTFUnarchiver {
     
     private func iterateBufferView(index: Int, offset: Int, stride: Int, count: Int, block: @escaping (UnsafeRawPointer) -> Void) throws {
         guard count > 0 else { return }
-        
+        guard let json else {
+            throw GLTFUnarchiveError.DataInconsistent("getDataStride: bufferViews is not defined")
+        }
+        guard let bufferViews = json.bufferViews else {
+            throw GLTFUnarchiveError.DataInconsistent("getDataStride: bufferViews is not defined")
+        }
         let bufferView = try self.loadBufferView(index: index)
-        let glBufferView = self.json.bufferViews![index]
+        let glBufferView = bufferViews[index]
         var byteStride = stride
         if let glByteStride = glBufferView.byteStride {
             byteStride = glByteStride
@@ -348,7 +354,7 @@ public class GLTFUnarchiver {
     }
     
     private func getDataStride(ofBufferViewIndex index: Int) throws -> Int? {
-        guard let bufferViews = self.json.bufferViews else {
+        guard let bufferViews = self.json?.bufferViews else {
             throw GLTFUnarchiveError.DataInconsistent("getDataStride: bufferViews is not defined")
         }
         guard index < bufferViews.count else {
@@ -402,7 +408,7 @@ public class GLTFUnarchiver {
             throw GLTFUnarchiveError.DataInconsistent("loadVertexAccessor: the accessor \(index) is not SCNGeometrySource")
         }
         
-        guard let accessors = self.json.accessors else {
+        guard let accessors = self.json?.accessors else {
             throw GLTFUnarchiveError.DataInconsistent("loadVertexAccessor: accessors is not defined")
         }
         let glAccessor = accessors[index]
@@ -516,7 +522,7 @@ public class GLTFUnarchiver {
             throw GLTFUnarchiveError.DataInconsistent("loadIndexAccessor: the accessor \(index) is not SCNGeometryElement")
         }
         
-        guard let accessors = self.json.accessors else {
+        guard let accessors = self.json?.accessors else {
             throw GLTFUnarchiveError.DataInconsistent("loadIndexAccessor: accessors is not defined")
         }
         let glAccessor = accessors[index]
@@ -625,7 +631,7 @@ public class GLTFUnarchiver {
             throw GLTFUnarchiveError.DataInconsistent("loadKeyTimeAccessor: the accessor \(index) is not [Float]")
         }
         
-        guard let accessors = self.json.accessors else {
+        guard let accessors = self.json?.accessors else {
             throw GLTFUnarchiveError.DataInconsistent("loadKeyTimeAccessor: accessors is not defined")
         }
         let glAccessor = accessors[index]
@@ -683,7 +689,7 @@ public class GLTFUnarchiver {
             throw GLTFUnarchiveError.DataInconsistent("loadValueAccessor: the accessor \(index) is not [Float]")
         }
         
-        guard let accessors = self.json.accessors else {
+        guard let accessors = self.json?.accessors else {
             throw GLTFUnarchiveError.DataInconsistent("loadValueAccessor: accessors is not defined")
         }
         let glAccessor = accessors[index]
@@ -784,7 +790,7 @@ public class GLTFUnarchiver {
             return image
         }
         
-        guard let images = self.json.images else {
+        guard let images = self.json?.images else {
             throw GLTFUnarchiveError.DataInconsistent("loadImage: images is not defined")
         }
         let glImage = images[index]
@@ -816,7 +822,7 @@ public class GLTFUnarchiver {
     }
     
     private func setSampler(index: Int, to property: SCNMaterialProperty) throws {
-        guard let samplers = self.json.samplers else {
+        guard let samplers = self.json?.samplers else {
             throw GLTFUnarchiveError.DataInconsistent("setSampler: samplers is not defined")
         }
         if index >= samplers.count {
@@ -877,7 +883,7 @@ public class GLTFUnarchiver {
             return texture
         }
         
-        guard let textures = self.json.textures else {
+        guard let textures = self.json?.textures else {
             throw GLTFUnarchiveError.DataInconsistent("loadTexture: textures is not defined")
         }
         let glTexture = textures[index]
@@ -951,7 +957,7 @@ public class GLTFUnarchiver {
             return material
         }
         
-        guard let materials = self.json.materials else {
+        guard let materials = self.json?.materials else {
             throw GLTFUnarchiveError.DataInconsistent("loadMaterials: materials it not defined")
         }
         let glMaterial = materials[index]
@@ -1091,7 +1097,7 @@ public class GLTFUnarchiver {
             return mesh.clone()
         }
         
-        guard let meshes = self.json.meshes else {
+        guard let meshes = self.json?.meshes else {
             throw GLTFUnarchiveError.DataInconsistent("loadMesh: meshes it not defined")
         }
         let glMesh = meshes[index]
@@ -1171,7 +1177,7 @@ public class GLTFUnarchiver {
                     if let extras = glMesh.extras, let extrasTargetNames = extras.extensions["TargetNames"] as? GLTFExtrasTargetNames, let targetNames = extrasTargetNames.targetNames {
                         geometry.name = targetNames[targetIndex]
                     }
-                    else if let accessor = self.json.accessors?[target["POSITION"]!], let name = accessor.name {
+                    else if let accessor = self.json?.accessors?[target["POSITION"]!], let name = accessor.name {
                         geometry.name = name
                     }
 
@@ -1230,7 +1236,7 @@ public class GLTFUnarchiver {
             }
         }
         
-        guard let animations = self.json.animations else {
+        guard let animations = self.json?.animations else {
             throw GLTFUnarchiveError.DataInconsistent("loadAnimationSampler: animations is not defined")
         }
         let glAnimation = animations[index]
@@ -1274,7 +1280,7 @@ public class GLTFUnarchiver {
             }
         }
         
-        guard let glAnimations = self.json.animations else {
+        guard let glAnimations = self.json?.animations else {
             throw GLTFUnarchiveError.DataInconsistent("loadWeightAnimationsSampler: animations is not defined")
         }
         let glAnimation = glAnimations[index]
@@ -1339,7 +1345,7 @@ public class GLTFUnarchiver {
             }
         }
         
-        guard let animations = self.json.animations else {
+        guard let animations = self.json?.animations else {
             throw GLTFUnarchiveError.DataInconsistent("loadAnimation: animations is not defined")
         }
         let glAnimation = animations[index]
@@ -1396,7 +1402,7 @@ public class GLTFUnarchiver {
     
     //@available(OSX 10.13, *)
     private func loadAnimation(forNode index: Int) throws {
-        guard let animations = self.json.animations else { return }
+        guard let animations = self.json?.animations else { return }
         
         let node = try self.loadNode(index: index)
         let weightPaths = node.value(forUndefinedKey: "weightPaths") as? [String]
@@ -1413,8 +1419,8 @@ public class GLTFUnarchiver {
     }
     
     private func getMaxAnimationDuration() throws -> CFTimeInterval {
-        guard let animations = self.json.animations else { return 0.0 }
-        guard let accessors = self.json.accessors else { return 0.0 }
+        guard let animations = self.json?.animations else { return 0.0 }
+        guard let accessors = self.json?.accessors else { return 0.0 }
         var duration: CFTimeInterval = 0.0
         for animation in animations {
             for sampler in animation.samplers {
@@ -1443,7 +1449,7 @@ public class GLTFUnarchiver {
         if self.accessors[index] != nil {
             throw GLTFUnarchiveError.DataInconsistent("loadInverseBindMatrices: the accessor \(index) is not [SCNMatrix4]")
         }
-        guard let accessors = self.json.accessors else {
+        guard let accessors = self.json?.accessors else {
             throw GLTFUnarchiveError.DataInconsistent("loadInverseBindMatrices: accessors is not defined")
         }
         let glAccessor = accessors[index]
@@ -1509,7 +1515,7 @@ public class GLTFUnarchiver {
             return skin
         }
         
-        guard let skins = self.json.skins else {
+        guard let skins = self.json?.skins else {
             throw GLTFUnarchiveError.DataInconsistent("loadSkin: 'skins' is not defined")
         }
         let glSkin = skins[index]
@@ -1598,7 +1604,7 @@ public class GLTFUnarchiver {
             return node
         }
         
-        guard let nodes = self.json.nodes else {
+        guard let nodes = self.json?.nodes else {
             throw GLTFUnarchiveError.DataInconsistent("loadNode: nodes is not defined")
         }
         let glNode = nodes[index]
@@ -1663,7 +1669,7 @@ public class GLTFUnarchiver {
     }
     
     func loadScene() throws -> SCNScene {
-        if let sceneIndex = self.json.scene {
+        if let sceneIndex = self.json?.scene {
             return try self.loadScene(index: sceneIndex)
         }
         return try self.loadScene(index: 0)
@@ -1678,7 +1684,7 @@ public class GLTFUnarchiver {
             return scene
         }
         
-        guard let scenes = self.json.scenes else {
+        guard let scenes = self.json?.scenes else {
             throw GLTFUnarchiveError.DataInconsistent("loadScene: scenes is not defined")
         }
         let glScene = scenes[index]
@@ -1700,13 +1706,13 @@ public class GLTFUnarchiver {
         
         glScene.didLoad(by: scnScene, unarchiver: self)
         
-        self.json.didLoad(by: scnScene, unarchiver: self)
+        self.json?.didLoad(by: scnScene, unarchiver: self)
         
         return scnScene
     }
     
     func loadScenes() throws {
-        guard let scenes = self.json.scenes else { return }
+        guard let scenes = self.json?.scenes else { return }
         for index in 0..<scenes.count {
             _ = try self.loadScene(index: index)
         }
